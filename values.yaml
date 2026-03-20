@@ -20,7 +20,7 @@ argocd:
 environments:
   dev:
     enabled: true
-    server: "https://kubernetes.default.svc
+    server: "https://kubernetes.default.svc"
     namespace: dev
     labels:
       environment: dev

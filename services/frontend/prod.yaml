@@ -1,0 +1,13 @@
+# Frontend — production overrides
+replicaCount: 3
+
+hpa:
+  enabled: true
+  maxReplicas: 10
+  targetCPU: 70
+
+configMap:
+  enabled: true
+  data:
+    API_URL: "http://api-gateway:8080"
+    NODE_ENV: "production"

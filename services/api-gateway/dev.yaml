@@ -1,0 +1,10 @@
+# API Gateway — dev overrides
+httpRoute:
+  hostnames:
+    - "api.dev.example.com"
+
+configMap:
+  enabled: true
+  data:
+    LOG_LEVEL: "debug"
+    DB_HOST: "postgres.dev:5432"

@@ -1,5 +1,10 @@
+# API Gateway — shared config (all environments)
 image:
   repository: registry.example.com/api-gateway
+
+service:
+  port: 8080
+  targetPort: 8080
 
 httpRoute:
   enabled: true
@@ -9,18 +14,11 @@ httpRoute:
     - backendPort: 8080
       pathMatch: /api
 
-hpa:
-  enabled: true
-  maxReplicas: 8
-
 configMap:
   enabled: true
   data:
     LOG_LEVEL: "info"
-    DB_HOST: "postgres.database:5432"
 
+# Secrets managed via External Secrets Operator — do NOT put values here
 secret:
   enabled: true
-  data:
-    DB_PASSWORD: "changeme"
-    JWT_SECRET: "changeme"

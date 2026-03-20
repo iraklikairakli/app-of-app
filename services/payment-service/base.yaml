@@ -1,0 +1,7 @@
+# Payment Service — shared config (all environments)
+image:
+  repository: registry.example.com/payment-service
+
+# Secrets managed via External Secrets Operator
+secret:
+  enabled: true

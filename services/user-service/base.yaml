@@ -1,13 +1,12 @@
+# User Service — shared config (all environments)
 image:
   repository: registry.example.com/user-service
 
 configMap:
   enabled: true
   data:
-    DB_HOST: "postgres.database:5432"
     CACHE_HOST: "redis.cache:6379"
 
+# Secrets managed via External Secrets Operator
 secret:
   enabled: true
-  data:
-    DB_PASSWORD: "changeme"

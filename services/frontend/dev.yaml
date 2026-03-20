@@ -1,0 +1,12 @@
+# Frontend — dev overrides
+replicaCount: 1
+
+httpRoute:
+  hostnames:
+    - "frontend.dev.example.com"
+
+configMap:
+  enabled: true
+  data:
+    API_URL: "http://api-gateway.dev:8080"
+    NODE_ENV: "development"

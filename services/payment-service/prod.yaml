@@ -1,8 +1,7 @@
-image:
-  repository: registry.example.com/payment-service
-
+# Payment Service — production overrides
 hpa:
   enabled: true
+  maxReplicas: 6
   targetCPU: 60
 
 resources:
@@ -12,8 +11,3 @@ resources:
   limits:
     cpu: "1"
     memory: 1Gi
-
-secret:
-  enabled: true
-  data:
-    STRIPE_SECRET_KEY: "changeme"

@@ -1,0 +1,51 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: apps-dev
+  namespace: argocd
+  labels:
+    environment: dev
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - git:
+        repoURL: "https://github.com/iraklikairakli/app-of-app.git"
+        revision: HEAD
+        directories:
+          - path: "services/*"
+            exclude: false
+          - path: "services/_*"
+            exclude: true
+  template:
+    metadata:
+      name: "{{ .path.basename }}-dev"
+      labels:
+        app.kubernetes.io/part-of: app-of-apps
+        environment: dev
+    spec:
+      project: default
+      destination:
+        server: "https://dev.k8s.example.com"
+        namespace: dev
+      source:
+        repoURL: "https://github.com/iraklikairakli/app-of-app.git"
+        targetRevision: HEAD
+        path: chart
+        helm:
+          valueFiles:
+            - "../environments/dev.yaml"
+            - "../{{ .path.path }}/base.yaml"
+            # dev.yaml override is optional — only loaded if it exists
+            - "../{{ .path.path }}/dev.yaml"
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+      ignoreDifferences:
+        - group: apps
+          kind: Deployment
+          jsonPointers:
+            - /spec/replicas

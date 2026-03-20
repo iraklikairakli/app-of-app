@@ -1,29 +1,40 @@
-# Copy to: services/<your-service-name>/values.yaml
-# Write ONLY what differs from defaults.yaml
+# =============================================================================
+# Service Template
+# =============================================================================
+# To onboard a new service:
+#   1. mkdir services/<your-service-name>
+#   2. cp services/_template.yaml services/<your-service-name>/base.yaml
+#   3. Edit base.yaml with your service config
+#   4. (Optional) Create dev.yaml, stage.yaml, prod.yaml for env overrides
+#   5. Commit and push — ArgoCD auto-discovers the new service
+# =============================================================================
 
 image:
   repository: registry.example.com/<your-service-name>
   tag: "latest"
 
-# --- Uncomment if needed ---
-# replicaCount: 3
+# --- Common overrides (uncomment what you need) ---
+
 # service:
-#   port: 3000
-#   targetPort: 3000
+#   port: 8080
+#   targetPort: 8080
+
 # httpRoute:
 #   enabled: true
 #   hostnames:
 #     - "myapp.example.com"
 #   rules:
-#     - backendPort: 3000
-# hpa:
-#   enabled: true
-#   maxReplicas: 10
+#     - backendPort: 8080
+
 # configMap:
 #   enabled: true
 #   data:
 #     MY_VAR: "value"
+
+# Secrets — enable the resource, but manage values via External Secrets Operator
 # secret:
 #   enabled: true
-#   data:
-#     MY_SECRET: "changeme"
+
+# hpa:
+#   enabled: true
+#   maxReplicas: 10

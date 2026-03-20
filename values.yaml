@@ -1,186 +1,77 @@
-# =====================================================
-# ArgoCD & Global Settings
-# =====================================================
+# =============================================================================
+# Global ArgoCD Settings
+# =============================================================================
 argocd:
   namespace: argocd
   project: default
-  # Helm chart repo where service charts live
   repoURL: "https://github.com/iraklikairakli/app-of-app.git"
-  # OR git repo:
-  # repoURL: "https://github.com/your-org/helm-charts.git"
 
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
-
-# =====================================================
-# Services / Applications
-# =====================================================
-services:
-  # ---------- Example: frontend ----------
-  frontend:
+# =============================================================================
+# Environments / Clusters
+# =============================================================================
+# Each entry generates an ApplicationSet that discovers services from services/
+# and deploys them to the target cluster.
+#
+# To add a new environment or cluster:
+#   1. Add an entry here
+#   2. Create environments/<name>.yaml with cluster-specific defaults
+#   3. (Optional) Add services/<service>/<env>.yaml for per-service overrides
+# =============================================================================
+environments:
+  dev:
     enabled: true
-    namespace: production
-    chart: service-template       # chart name in helm repo
-    targetRevision: "1.0.0"       # chart version
-    values:
-      replicaCount: 3
-      image:
-        repository: registry.example.com/frontend
-        tag: "latest"
-      service:
-        type: ClusterIP
-        port: 80
-        targetPort: 3000
-      httpRoute:
-        enabled: true
-        hostnames:
-          - "frontend.example.com"
-        rules:
-          - backendPort: 80
-      configMap:
-        enabled: true
-        data:
-          API_URL: "http://api-gateway:8080"
-          NODE_ENV: "production"
-      secret:
-        enabled: false
-      hpa:
-        enabled: true
-        minReplicas: 2
-        maxReplicas: 10
-        targetCPU: 70
-      resources:
-        requests:
-          cpu: 100m
-          memory: 128Mi
-        limits:
-          cpu: 500m
-          memory: 512Mi
+    server: "https://dev.k8s.example.com"
+    namespace: dev
+    labels:
+      environment: dev
+    syncPolicy:
+      automated:
+        prune: true
+        selfHeal: true
+      syncOptions:
+        - CreateNamespace=true
 
-  # ---------- Example: api-gateway ----------
-  api-gateway:
+  stage:
     enabled: true
-    namespace: production
-    chart: service-template
-    targetRevision: "1.0.0"
-    values:
-      replicaCount: 2
-      image:
-        repository: registry.example.com/api-gateway
-        tag: "latest"
-      service:
-        type: ClusterIP
-        port: 8080
-        targetPort: 8080
-      httpRoute:
-        enabled: true
-        hostnames:
-          - "api.example.com"
-        rules:
-          - backendPort: 8080
-            pathMatch: /api
-      configMap:
-        enabled: true
-        data:
-          LOG_LEVEL: "info"
-          DB_HOST: "postgres.database:5432"
-      secret:
-        enabled: true
-        data:
-          DB_PASSWORD: "changeme"       # use sealed-secrets in production!
-          JWT_SECRET: "changeme"
-      hpa:
-        enabled: true
-        minReplicas: 2
-        maxReplicas: 8
-        targetCPU: 75
-      resources:
-        requests:
-          cpu: 200m
-          memory: 256Mi
-        limits:
-          cpu: "1"
-          memory: 1Gi
+    server: "https://stage.k8s.example.com"
+    namespace: stage
+    labels:
+      environment: stage
+    syncPolicy:
+      automated:
+        prune: true
+        selfHeal: true
+      syncOptions:
+        - CreateNamespace=true
 
-  # ---------- Example: user-service ----------
-  user-service:
+  prod-cluster-1:
     enabled: true
+    server: "https://prod-1.k8s.example.com"
     namespace: production
-    chart: service-template
-    targetRevision: "1.0.0"
-    values:
-      replicaCount: 2
-      image:
-        repository: registry.example.com/user-service
-        tag: "latest"
-      service:
-        type: ClusterIP
-        port: 8080
-        targetPort: 8080
-      httpRoute:
-        enabled: false
-      configMap:
-        enabled: true
-        data:
-          DB_HOST: "postgres.database:5432"
-          CACHE_HOST: "redis.cache:6379"
-      secret:
-        enabled: true
-        data:
-          DB_PASSWORD: "changeme"
-      hpa:
-        enabled: false
-      resources:
-        requests:
-          cpu: 100m
-          memory: 128Mi
-        limits:
-          cpu: 500m
-          memory: 512Mi
+    envKey: prod            # maps to services/<svc>/prod.yaml
+    labels:
+      environment: prod
+      cluster: prod-1
+      region: us-east-1
+    syncPolicy:
+      automated:
+        prune: true
+        selfHeal: true
+      syncOptions:
+        - CreateNamespace=true
 
-  # ---------- Example: payment-service ----------
-  payment-service:
+  prod-cluster-2:
     enabled: true
+    server: "https://prod-2.k8s.example.com"
     namespace: production
-    chart: service-template
-    targetRevision: "1.0.0"
-    values:
-      replicaCount: 2
-      image:
-        repository: registry.example.com/payment-service
-        tag: "latest"
-      service:
-        type: ClusterIP
-        port: 8080
-        targetPort: 8080
-      httpRoute:
-        enabled: false
-      configMap:
-        enabled: true
-        data:
-          STRIPE_MODE: "live"
-      secret:
-        enabled: true
-        data:
-          STRIPE_SECRET_KEY: "changeme"
-      hpa:
-        enabled: true
-        minReplicas: 2
-        maxReplicas: 6
-        targetCPU: 60
-      resources:
-        requests:
-          cpu: 200m
-          memory: 256Mi
-        limits:
-          cpu: "1"
-          memory: 1Gi
-
-  # ---------- Add more services below ----------
-  # notification-service:
-  #   enabled: true
-  #   ...
+    envKey: prod            # shares prod.yaml overrides with cluster-1
+    labels:
+      environment: prod
+      cluster: prod-2
+      region: eu-west-1
+    syncPolicy:
+      automated:
+        prune: true
+        selfHeal: true
+      syncOptions:
+        - CreateNamespace=true

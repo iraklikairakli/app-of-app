@@ -1,0 +1,25 @@
+# =============================================================================
+# Dev Environment — Cluster-Wide Defaults
+# =============================================================================
+# These values are merged AFTER chart/values.yaml and BEFORE service base.yaml.
+# Use this to set environment-wide defaults (lower resources, fewer replicas, etc.)
+# =============================================================================
+
+replicaCount: 1
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 250m
+    memory: 256Mi
+
+hpa:
+  enabled: false
+
+probes:
+  liveness:
+    initialDelaySeconds: 5
+  readiness:
+    initialDelaySeconds: 3

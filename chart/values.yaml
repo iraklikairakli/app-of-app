@@ -1,4 +1,12 @@
-replicaCount: 1
+# =============================================================================
+# Service Template — Default Values
+# =============================================================================
+# These defaults apply to ALL services unless overridden in:
+#   services/<name>/base.yaml    (shared overrides)
+#   services/<name>/<env>.yaml   (environment-specific overrides)
+# =============================================================================
+
+replicaCount: 2
 
 image:
   repository: nginx
@@ -9,8 +17,8 @@ imagePullSecrets: []
 
 service:
   type: ClusterIP
-  port: 80
-  targetPort: 80
+  port: 8080
+  targetPort: 8080
 
 httpRoute:
   enabled: false
@@ -19,7 +27,7 @@ httpRoute:
       namespace: envoy
   hostnames: []
   rules:
-    - backendPort: 80
+    - backendPort: 8080
       pathMatch: ""
 
 configMap:
@@ -28,13 +36,16 @@ configMap:
 
 secret:
   enabled: false
+  # NOTE: Do NOT store secret values in Git.
+  # Use External Secrets Operator, Sealed Secrets, or Vault.
+  # This chart only creates the Secret resource skeleton.
   data: {}
 
 hpa:
   enabled: false
-  minReplicas: 1
-  maxReplicas: 5
-  targetCPU: 80
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPU: 75
 
 resources:
   requests:

@@ -1,0 +1,50 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: apps-stage
+  namespace: argocd
+  labels:
+    environment: stage
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - git:
+        repoURL: "https://github.com/iraklikairakli/app-of-app.git"
+        revision: HEAD
+        directories:
+          - path: "services/*"
+            exclude: false
+          - path: "services/_*"
+            exclude: true
+  template:
+    metadata:
+      name: "{{ .path.basename }}-stage"
+      labels:
+        app.kubernetes.io/part-of: app-of-apps
+        environment: stage
+    spec:
+      project: default
+      destination:
+        server: "https://stage.k8s.example.com"
+        namespace: stage
+      source:
+        repoURL: "https://github.com/iraklikairakli/app-of-app.git"
+        targetRevision: HEAD
+        path: chart
+        helm:
+          valueFiles:
+            - "../environments/stage.yaml"
+            - "../{{ .path.path }}/base.yaml"
+            - "../{{ .path.path }}/stage.yaml"
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+      ignoreDifferences:
+        - group: apps
+          kind: Deployment
+          jsonPointers:
+            - /spec/replicas

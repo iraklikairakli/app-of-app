@@ -1,0 +1,68 @@
+{{/*
+  Generates ArgoCD ApplicationSet manifests from values.yaml environments.
+  Each environment entry produces one ApplicationSet that auto-discovers
+  services from services/* directories.
+
+  This template is optional — you can also apply applicationsets/*.yaml
+  directly with kubectl. This Helm approach lets you manage everything
+  from a single "helm install" bootstrap.
+*/}}
+{{- $global := . }}
+{{- range $envName, $env := .Values.environments }}
+{{- if $env.enabled }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: apps-{{ $envName }}
+  namespace: {{ $global.Values.argocd.namespace }}
+  labels:
+    app.kubernetes.io/part-of: app-of-apps
+    {{- range $k, $v := $env.labels }}
+    {{ $k }}: {{ $v | quote }}
+    {{- end }}
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - git:
+        repoURL: {{ $global.Values.argocd.repoURL | quote }}
+        revision: HEAD
+        directories:
+          - path: "services/*"
+            exclude: false
+          - path: "services/_*"
+            exclude: true
+  template:
+    metadata:
+      name: "{{`{{ .path.basename }}`}}-{{ $envName }}"
+      labels:
+        app.kubernetes.io/part-of: app-of-apps
+        {{- range $k, $v := $env.labels }}
+        {{ $k }}: {{ $v | quote }}
+        {{- end }}
+    spec:
+      project: {{ $global.Values.argocd.project }}
+      destination:
+        server: {{ $env.server | quote }}
+        namespace: {{ $env.namespace }}
+      source:
+        repoURL: {{ $global.Values.argocd.repoURL | quote }}
+        targetRevision: HEAD
+        path: chart
+        helm:
+          valueFiles:
+            - "../environments/{{ $envName }}.yaml"
+            - "../{{`{{ .path.path }}`}}/base.yaml"
+            - "../{{`{{ .path.path }}`}}/{{ $env.envKey | default $envName }}.yaml"
+      {{- with $env.syncPolicy }}
+      syncPolicy:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      ignoreDifferences:
+        - group: apps
+          kind: Deployment
+          jsonPointers:
+            - /spec/replicas
+{{- end }}
+{{- end }}

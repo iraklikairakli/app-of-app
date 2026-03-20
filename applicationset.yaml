@@ -6,7 +6,7 @@ metadata:
 spec:
   generators:
     - git:
-        repoURL: https://github.com/your-org/app-of-apps.git
+        repoURL: https://github.com/iraklikairakli/app-of-app.git
         revision: HEAD
         directories:
           - path: "services/*"
@@ -26,7 +26,7 @@ spec:
         server: https://kubernetes.default.svc
         namespace: production
       source:
-        repoURL: https://github.com/your-org/app-of-apps.git
+        repoURL: https://github.com/iraklikairakli/app-of-app.git
         targetRevision: HEAD
         path: chart
         helm:

@@ -1,0 +1,44 @@
+# =============================================================================
+# Yggdrasil Integration — QA Overrides
+# =============================================================================
+image:
+  repository: docker-proxy.registry.crocobet.com/crocohub/yggdrasil-integration
+  tag: snapshot-107
+
+replicaCount: 1
+
+env:
+  - name: SPRING_PROFILES_ACTIVE
+    value: qa
+  - name: CONFIG_SERVER
+    value: http://config-server-service:8888
+  - name: JAVA_TOOL_OPTIONS
+    value: >-
+      -Xdebug -agentlib:jdwp=transport=dt_socket,address=0.0.0.0:5005,server=y,suspend=n
+      -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0
+
+ingress:
+  hosts:
+    - host: internal-qa-yggdrasil-integration.crocobet.com
+      paths:
+        - path: /
+          pathType: Prefix
+    - host: qa-yggdrasil-integration.crocobet.local
+      paths:
+        - path: /
+          pathType: Prefix
+    - host: external-stage-yggdrasil-integrations.crocobet.com
+      paths:
+        - path: /
+          pathType: Prefix
+
+resources:
+  limits:
+    cpu: "2"
+    memory: 2Gi
+  requests:
+    cpu: "2"
+    memory: 2Gi
+
+hpa:
+  enabled: false

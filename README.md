@@ -2,48 +2,52 @@
 
 Scalable GitOps structure for managing 100+ Kubernetes services across multiple environments and clusters using ArgoCD ApplicationSets.
 
+Migrated from [zero-to-hero-v2](https://gitlab.crocobet.com/kubernetes/zero-to-hero-v2.git) to a clean, scalable app-of-apps pattern.
+
 ## Architecture Overview
 
 ```
 app-of-apps/
 ├── Chart.yaml                         # Root Helm chart metadata
-├── values.yaml                        # Global config: repo URL + environment definitions
+├── values.yaml                        # Global config: repo URL, project, environments
 │
 ├── chart/                             # Shared service Helm chart (single template for all services)
 │   ├── Chart.yaml
 │   ├── values.yaml                    # Default values for all services
 │   └── templates/
-│       ├── _helpers.tpl
-│       ├── deployment.yaml
-│       ├── service.yaml
-│       ├── configmap.yaml
-│       ├── secret.yaml
-│       ├── hpa.yaml
-│       └── httproute.yaml
+│       ├── _helpers.tpl               # Name/label helpers
+│       ├── deployment.yaml            # Deployment with env vars, volumes, probes, strategy
+│       ├── service.yaml               # ClusterIP service
+│       ├── ingress.yaml               # Nginx Ingress
+│       ├── configmap.yaml             # Optional ConfigMap
+│       ├── secret.yaml                # Optional Secret skeleton
+│       ├── hpa.yaml                   # HPA with CPU + Memory metrics
+│       ├── httproute.yaml             # Gateway API HTTPRoute (alternative to Ingress)
+│       ├── serviceaccount.yaml        # ServiceAccount
+│       └── servicemonitor.yaml        # Prometheus ServiceMonitor
 │
-├── environments/                      # Per-environment/cluster default overrides
-│   ├── dev.yaml                       # Dev: low resources, 1 replica
-│   ├── stage.yaml                     # Stage: mirrors prod sizing
-│   ├── prod-cluster-1.yaml            # Prod cluster 1: full resources
-│   └── prod-cluster-2.yaml            # Prod cluster 2: full resources
+├── environments/                      # Per-environment/cluster defaults
+│   ├── dev.yaml
+│   ├── qa.yaml
+│   ├── stage.yaml
+│   ├── prod-c9.yaml                   # Production cluster C9 (10.4.12.100)
+│   └── prod-co.yaml                   # Production cluster CO (10.4.12.200)
 │
 ├── services/                          # One directory per service
 │   ├── _template.yaml                 # Copy this to onboard a new service
-│   ├── frontend/
-│   │   ├── base.yaml                  # Shared config (all envs)
-│   │   ├── dev.yaml                   # Dev-specific overrides
-│   │   └── prod.yaml                  # Prod-specific overrides
-│   ├── api-gateway/
-│   │   ├── base.yaml
-│   │   ├── dev.yaml
-│   │   └── prod.yaml
-│   └── ...
+│   └── yggdrasil-integration/
+│       ├── base.yaml                  # Shared config (all envs): image, ports, ingress, volumes
+│       ├── dev.yaml                   # Dev: image tag, ingress hosts, env vars
+│       ├── qa.yaml                    # QA: different registry, resources
+│       ├── stage.yaml                 # Stage: staging hosts
+│       └── prod.yaml                  # Prod: HPA, resources, prod hosts
 │
-├── applicationsets/                   # Standalone ApplicationSet YAMLs (alternative to Helm)
+├── applicationsets/                   # Standalone ApplicationSet YAMLs
 │   ├── dev.yaml
+│   ├── qa.yaml
 │   ├── stage.yaml
-│   ├── prod-cluster-1.yaml
-│   └── prod-cluster-2.yaml
+│   ├── prod-c9.yaml                   # C9 cluster (10.4.12.100)
+│   └── prod-co.yaml                   # CO cluster (10.4.12.200)
 │
 └── templates/                         # Helm template that generates ApplicationSets
     └── applicationsets.yaml           # Renders from values.yaml environments
@@ -56,40 +60,78 @@ app-of-apps/
 ```
 chart/values.yaml              ← Chart defaults (all services, all envs)
   ↓
-environments/<env>.yaml        ← Environment-wide overrides (resources, replicas)
+environments/<env>.yaml        ← Environment-wide overrides (replicas, HPA)
   ↓
-services/<name>/base.yaml      ← Service-specific shared config (image, ports, routes)
+services/<name>/base.yaml      ← Service-specific shared config (image, ports, ingress, volumes)
   ↓
 services/<name>/<env>.yaml     ← Service + environment specific overrides (optional)
 ```
 
-Each layer only needs to define what it overrides. Helm deep-merges everything.
+Each layer only defines what it overrides. Helm deep-merges everything.
 
 ### Auto-Discovery
 
-Each ApplicationSet uses a **Git directory generator** that scans `services/*`. When you add a new directory under `services/`, ArgoCD automatically creates Applications for it in every environment.
+Each ApplicationSet uses a **Git directory generator** that scans `services/*`. Adding a new directory under `services/` causes ArgoCD to automatically create Applications for it in every environment.
 
 ---
 
 ## Environment Strategy
 
-| Environment | Namespace | Purpose | Sync Policy |
-|---|---|---|---|
-| `dev` | `dev` | Development and testing | Auto-sync, self-heal |
-| `stage` | `stage` | Pre-production validation | Auto-sync, self-heal |
-| `prod-cluster-1` | `production` | Production (us-east-1) | Auto-sync, self-heal |
-| `prod-cluster-2` | `production` | Production (eu-west-1) | Auto-sync, self-heal |
+| Environment | Cluster | Server | Namespace | Sync Policy |
+|---|---|---|---|---|
+| `dev` | c9 | 10.4.12.100:6443 | default | Auto-prune, self-heal |
+| `qa` | c9 | 10.4.12.100:6443 | default | Auto-prune, self-heal |
+| `stage` | c9 | 10.4.12.100:6443 | default | Auto-prune, self-heal |
+| `prod-c9` | c9 | 10.4.12.100:6443 | default | Manual (no auto-prune/heal) |
+| `prod-co` | co | 10.4.12.200:6443 | default | Manual (no auto-prune/heal) |
 
 ### Two Independent Production Clusters
 
 Both prod clusters are **completely independent**:
-- Separate ApplicationSets (`apps-prod-cluster-1`, `apps-prod-cluster-2`)
-- Separate cluster server URLs
-- Separate Application names (`<service>-prod-1`, `<service>-prod-2`)
+- Separate ApplicationSets (`apps-prod-c9`, `apps-prod-co`)
+- Separate cluster server URLs (c9: `10.4.12.100`, co: `10.4.12.200`)
+- Separate Application names (`prod-c9-<service>`, `prod-co-<service>`)
 - Share the same `prod.yaml` overrides (via `envKey: prod` in values.yaml)
-- Can have cluster-specific environment files (`environments/prod-cluster-1.yaml` vs `environments/prod-cluster-2.yaml`)
+- Can have cluster-specific defaults (`environments/prod-c9.yaml` vs `environments/prod-co.yaml`)
+- Production sync policy is **manual** (no auto-prune, no self-heal) for safety
 
-You can safely update one cluster without affecting the other.
+You can safely deploy to one cluster without affecting the other.
+
+### Application Naming Convention
+
+Format: `<env>-<service-name>`
+
+Examples:
+- `dev-yggdrasil-integration`
+- `qa-yggdrasil-integration`
+- `prod-c9-yggdrasil-integration`
+- `prod-co-yggdrasil-integration`
+
+This matches the zero-to-hero-v2 pattern (`{env}-{cluster}-{service}`).
+
+---
+
+## Chart Features
+
+The shared service template (`chart/`) supports all features from zero-to-hero-v2:
+
+| Feature | Controlled By |
+|---|---|
+| Deployment with rolling update strategy | `deploymentStrategy` |
+| Direct env vars (SPRING_PROFILES_ACTIVE, etc.) | `env[]` |
+| Nginx Ingress with multiple hosts | `ingress` |
+| Gateway API HTTPRoute | `httpRoute` |
+| HPA with CPU + Memory metrics | `hpa` |
+| ConfigMap (envFrom) | `configMap` |
+| Secret skeleton (envFrom) | `secret` |
+| ServiceAccount | `serviceAccount` |
+| Prometheus ServiceMonitor | `serviceMonitor` |
+| Volume mounts (certs, configmaps) | `volumes`, `volumeMounts` |
+| Lifecycle hooks (update-ca-certificates) | `lifecycle` |
+| Pod anti-affinity | `affinity` |
+| Init containers | `initContainers` |
+| Extra ports (debug 5005) | `extraPorts` |
+| Image pull secrets (regcred) | `imagePullSecrets` |
 
 ---
 
@@ -100,16 +142,16 @@ You can safely update one cluster without affecting the other.
 mkdir services/my-new-service
 cp services/_template.yaml services/my-new-service/base.yaml
 
-# 2. Edit base.yaml — set your image, ports, routes
+# 2. Edit base.yaml — set image, ports, ingress, volumes
 vim services/my-new-service/base.yaml
 
-# 3. (Optional) Add environment-specific overrides
-# Only create these if the service needs different config per env
-cat > services/my-new-service/prod.yaml << 'EOF'
-hpa:
-  enabled: true
-  maxReplicas: 8
-EOF
+# 3. Create environment-specific overrides
+# Copy from yggdrasil-integration as a reference:
+cp services/yggdrasil-integration/dev.yaml services/my-new-service/dev.yaml
+cp services/yggdrasil-integration/qa.yaml services/my-new-service/qa.yaml
+cp services/yggdrasil-integration/stage.yaml services/my-new-service/stage.yaml
+cp services/yggdrasil-integration/prod.yaml services/my-new-service/prod.yaml
+# Edit each file — update image tags, ingress hosts, env vars
 
 # 4. Commit and push — ArgoCD auto-discovers it
 git add services/my-new-service/
@@ -117,123 +159,80 @@ git commit -m "onboard: my-new-service"
 git push
 ```
 
-That's it. ArgoCD creates Applications for `my-new-service` in all environments automatically.
+ArgoCD creates Applications for `my-new-service` across all 5 environments automatically.
 
-## Onboarding a New Cluster / Environment
-
-### Adding a new environment (e.g., `qa`)
-
-```bash
-# 1. Add to values.yaml
-cat >> values.yaml << 'EOF'
-  qa:
-    enabled: true
-    server: "https://qa.k8s.example.com"
-    namespace: qa
-    labels:
-      environment: qa
-    syncPolicy:
-      automated:
-        prune: true
-        selfHeal: true
-      syncOptions:
-        - CreateNamespace=true
-EOF
-
-# 2. Create environment defaults
-cp environments/stage.yaml environments/qa.yaml
-vim environments/qa.yaml
-
-# 3. (Optional) Create standalone ApplicationSet
-cp applicationsets/stage.yaml applicationsets/qa.yaml
-# Update: name, server, namespace, valueFiles path
-
-# 4. Commit and push
-git add environments/qa.yaml applicationsets/qa.yaml values.yaml
-git commit -m "add qa environment"
-git push
-```
-
-### Adding a third production cluster
+## Onboarding a New Cluster
 
 ```bash
 # 1. Add to values.yaml under environments:
-#    prod-cluster-3:
+#    prod-new:
 #      enabled: true
-#      server: "https://prod-3.k8s.example.com"
-#      namespace: production
-#      envKey: prod        # reuses services/*/prod.yaml
+#      server: "https://<new-cluster-ip>:6443"
+#      namespace: default
+#      envKey: prod          # reuses services/*/prod.yaml
 #      labels:
 #        environment: prod
-#        cluster: prod-3
+#        cluster: new
 
 # 2. Create cluster defaults
-cp environments/prod-cluster-1.yaml environments/prod-cluster-3.yaml
+cp environments/prod-c9.yaml environments/prod-new.yaml
 
 # 3. Create standalone ApplicationSet
-cp applicationsets/prod-cluster-1.yaml applicationsets/prod-cluster-3.yaml
-# Update: name → apps-prod-cluster-3, server, labels
+cp applicationsets/prod-c9.yaml applicationsets/prod-new.yaml
+# Update: name, server, labels
 
 # 4. Commit and push
+git add environments/prod-new.yaml applicationsets/prod-new.yaml values.yaml
+git commit -m "add prod-new cluster"
+git push
 ```
 
 ---
 
 ## Promoting Changes Across Environments
 
-### dev → stage → prod
+### dev -> qa -> stage -> prod
 
 This structure uses **directory-per-environment** (not branches). Promotion is done through Git commits:
 
 ```bash
-# 1. Deploy to dev: edit services/<svc>/dev.yaml or base.yaml
-vim services/frontend/dev.yaml
-git commit -am "frontend: update API_URL for dev"
+# 1. Deploy to dev: edit services/<svc>/dev.yaml
+vim services/yggdrasil-integration/dev.yaml
+# Update image tag: v3.114 → v3.115
+git commit -am "yggdrasil-integration: deploy v3.115 to dev"
 git push
-# → ArgoCD syncs to dev cluster
+# → ArgoCD syncs to dev
 
-# 2. Promote to stage: create/update services/<svc>/stage.yaml
-cp services/frontend/dev.yaml services/frontend/stage.yaml
-vim services/frontend/stage.yaml  # adjust env-specific values
-git commit -am "frontend: promote to stage"
+# 2. Promote to qa: update services/<svc>/qa.yaml
+vim services/yggdrasil-integration/qa.yaml
+# Update image tag
+git commit -am "yggdrasil-integration: promote v3.115 to qa"
 git push
-# → ArgoCD syncs to stage cluster
 
-# 3. Promote to prod: create/update services/<svc>/prod.yaml
-vim services/frontend/prod.yaml
-git commit -am "frontend: promote to prod"
+# 3. Promote to stage: update services/<svc>/stage.yaml
+vim services/yggdrasil-integration/stage.yaml
+git commit -am "yggdrasil-integration: promote to stage"
 git push
-# → ArgoCD syncs to both prod clusters
+
+# 4. Promote to prod: update services/<svc>/prod.yaml (via Pull Request!)
+vim services/yggdrasil-integration/prod.yaml
+git commit -am "yggdrasil-integration: promote to prod"
+# Create PR → code review → merge → ArgoCD syncs to both C9 and CO
 ```
 
-**Best practice**: Use pull requests for stage and prod promotions. Require code review before merging.
-
-### Image tag promotion
-
-For most deployments, you only update the image tag:
-
-```bash
-# Update in base.yaml (deploys everywhere) or env-specific file
-vim services/frontend/base.yaml
-# Change: tag: "v1.2.0" → tag: "v1.3.0"
-
-git commit -am "frontend: release v1.3.0"
-git push
-```
+**Best practice**: Require pull request reviews for stage and prod promotions.
 
 ---
 
-## Deployment: Two Approaches
-
-You can deploy the ApplicationSets either via **Helm** (renders from `values.yaml`) or **directly** (applies standalone YAMLs).
+## Deployment
 
 ### Option A: Helm Bootstrap (Recommended for initial setup)
 
 ```bash
-# Install the root chart — generates all ApplicationSets
+# Render and apply all ApplicationSets at once
 helm template app-of-apps . --namespace argocd | kubectl apply -f -
 
-# Or with ArgoCD managing itself:
+# Or bootstrap via ArgoCD itself:
 argocd app create app-of-apps \
   --repo https://github.com/iraklikairakli/app-of-app.git \
   --path . \
@@ -242,17 +241,18 @@ argocd app create app-of-apps \
   --sync-policy automated
 ```
 
-### Option B: Direct kubectl apply (simpler, per-environment)
+### Option B: Direct kubectl apply (per-environment)
 
 ```bash
-# Apply specific environment ApplicationSets
-kubectl apply -f applicationsets/dev.yaml
-kubectl apply -f applicationsets/stage.yaml
-kubectl apply -f applicationsets/prod-cluster-1.yaml
-kubectl apply -f applicationsets/prod-cluster-2.yaml
-
-# Or all at once
+# Apply all at once
 kubectl apply -f applicationsets/
+
+# Or selectively
+kubectl apply -f applicationsets/dev.yaml
+kubectl apply -f applicationsets/qa.yaml
+kubectl apply -f applicationsets/stage.yaml
+kubectl apply -f applicationsets/prod-c9.yaml
+kubectl apply -f applicationsets/prod-co.yaml
 ```
 
 ### ArgoCD CLI
@@ -261,63 +261,39 @@ kubectl apply -f applicationsets/
 # List all applications
 argocd app list
 
-# Filter by environment
+# Filter by environment or cluster
 argocd app list -l environment=prod
-argocd app list -l cluster=prod-1
+argocd app list -l cluster=c9
+argocd app list -l environment=dev
 
 # Sync a specific application
-argocd app sync frontend-dev
-argocd app sync frontend-prod-1
+argocd app sync dev-yggdrasil-integration
+argocd app sync prod-c9-yggdrasil-integration
 
 # Check app status
-argocd app get frontend-prod-1
+argocd app get prod-c9-yggdrasil-integration
 
 # Diff before sync
-argocd app diff frontend-prod-1
+argocd app diff prod-c9-yggdrasil-integration
 
 # Hard refresh (re-read from Git)
-argocd app get frontend-prod-1 --hard-refresh
+argocd app get dev-yggdrasil-integration --hard-refresh
 
 # List ApplicationSets
 argocd appset list
 
 # View ApplicationSet details
 argocd appset get apps-dev
+argocd appset get apps-prod-c9
 ```
 
 ### ArgoCD Web UI
 
-1. **View all apps**: Navigate to the ArgoCD dashboard. Filter by label `environment=dev` or `cluster=prod-1` to see apps per environment.
-2. **Sync**: Click any app → "Sync" button to trigger manual sync.
-3. **App details**: Click an app to see its resources, events, logs, and diff.
-4. **ApplicationSets**: Go to "Settings" → "ApplicationSets" to see the generators.
-5. **Filtering**: Use the search bar or label filters (`environment:prod`, `cluster:prod-1`) to navigate 100+ services efficiently.
-
----
-
-## Secrets Management
-
-**This repository does NOT store secret values.** The `secret.enabled: true` flag creates a Kubernetes Secret resource skeleton, but actual values must be injected by one of:
-
-- **External Secrets Operator** (recommended) — syncs secrets from AWS Secrets Manager, Vault, GCP Secret Manager, etc.
-- **Sealed Secrets** — encrypts secrets for safe Git storage
-- **HashiCorp Vault** with the Vault Agent sidecar
-- **SOPS** — encrypts YAML values in-place
-
-Configure your chosen solution per-cluster, and reference the secret name in your service's `base.yaml`.
-
----
-
-## Anti-Patterns Avoided
-
-| Anti-Pattern | What We Do Instead |
-|---|---|
-| Branch-per-environment | Directory-per-environment in a single branch |
-| Secrets in Git | External Secrets Operator / Sealed Secrets |
-| Duplicate chart directories | Single `chart/` directory |
-| Manual `kubectl edit` in prod | All changes via Git commits |
-| Monolithic values file | Per-service directory with base + env overlays |
-| Hardcoded cluster URLs | Configurable via `values.yaml` environments |
+1. **View all apps**: Navigate to the ArgoCD dashboard. Use label filters `environment=dev` or `cluster=c9`.
+2. **Sync**: Click any app, then "Sync" to trigger manual sync.
+3. **App details**: Click an app to see resources, events, logs, and diff.
+4. **ApplicationSets**: Go to "Settings" -> "ApplicationSets" to see the generators.
+5. **Filtering**: Use search or label filters to navigate 100+ services efficiently.
 
 ---
 
@@ -326,10 +302,10 @@ Configure your chosen solution per-cluster, and reference the secret name in you
 | Task | Command |
 |---|---|
 | Add a service | `mkdir services/foo && cp services/_template.yaml services/foo/base.yaml` |
-| Add an environment | Add entry to `values.yaml`, create `environments/X.yaml` |
+| Add an environment | Add entry to `values.yaml`, create `environments/X.yaml` + `applicationsets/X.yaml` |
 | Add a prod cluster | Same as above with `envKey: prod` |
-| Deploy to dev | Edit `services/*/dev.yaml` or `base.yaml`, push |
+| Deploy to dev | Edit `services/*/dev.yaml`, push |
 | Promote to prod | Edit `services/*/prod.yaml`, push via PR |
 | View apps | `argocd app list -l environment=prod` |
-| Sync an app | `argocd app sync frontend-prod-1` |
+| Sync an app | `argocd app sync dev-yggdrasil-integration` |
 | Bootstrap | `kubectl apply -f applicationsets/` |

@@ -1,0 +1,39 @@
+# =============================================================================
+# Yggdrasil Integration — Stage Overrides
+# =============================================================================
+image:
+  tag: snapshot-87
+
+replicaCount: 1
+
+env:
+  - name: SPRING_PROFILES_ACTIVE
+    value: stage
+  - name: CONFIG_SERVER
+    value: http://config-server-service:8888
+  - name: JAVA_TOOL_OPTIONS
+    value: >-
+      -Xdebug -agentlib:jdwp=transport=dt_socket,address=0.0.0.0:5005,server=y,suspend=n
+      -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0
+
+ingress:
+  hosts:
+    - host: internal-stage-yggdrasil-integration.crocobet.com
+      paths:
+        - path: /
+          pathType: Prefix
+    - host: stage-yggdrasil-integration.crocobet.local
+      paths:
+        - path: /
+          pathType: Prefix
+    - host: external-stage-yggdrasil-integrations.crocobet.com
+      paths:
+        - path: /
+          pathType: Prefix
+
+hpa:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 2
+  targetCPU: 70
+  targetMemory: 70

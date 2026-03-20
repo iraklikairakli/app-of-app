@@ -1,11 +1,10 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: apps-prod-cluster-1
+  name: apps-qa
   namespace: argocd
   labels:
-    environment: prod
-    cluster: prod-1
+    environment: qa
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
@@ -20,25 +19,24 @@ spec:
             exclude: true
   template:
     metadata:
-      name: "{{ .path.basename }}-prod-1"
+      name: "qa-{{ .path.basename }}"
       labels:
         app.kubernetes.io/part-of: app-of-apps
-        environment: prod
-        cluster: prod-1
+        environment: qa
     spec:
-      project: default
+      project: integrations
       destination:
-        server: "https://prod-1.k8s.example.com"
-        namespace: production
+        server: "https://10.4.12.100:6443"
+        namespace: default
       source:
         repoURL: "https://github.com/iraklikairakli/app-of-app.git"
         targetRevision: HEAD
         path: chart
         helm:
           valueFiles:
-            - "../environments/prod-cluster-1.yaml"
+            - "../environments/qa.yaml"
             - "../{{ .path.path }}/base.yaml"
-            - "../{{ .path.path }}/prod.yaml"
+            - "../{{ .path.path }}/qa.yaml"
       syncPolicy:
         automated:
           prune: true

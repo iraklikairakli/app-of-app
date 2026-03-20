@@ -6,19 +6,41 @@
 #   services/<name>/<env>.yaml   (environment-specific overrides)
 # =============================================================================
 
-replicaCount: 2
+replicaCount: 1
 
 image:
   repository: nginx
   tag: "latest"
   pullPolicy: IfNotPresent
 
-imagePullSecrets: []
+imagePullSecrets:
+  - name: regcred
+
+nameOverride: ""
+fullnameOverride: ""
+extraLabels: {}
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podSecurityContext: {}
+securityContext: {}
 
 service:
+  name: ""
   type: ClusterIP
   port: 8080
   targetPort: 8080
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts: []
+  tls: []
 
 httpRoute:
   enabled: false
@@ -36,38 +58,56 @@ configMap:
 
 secret:
   enabled: false
-  # NOTE: Do NOT store secret values in Git.
-  # Use External Secrets Operator, Sealed Secrets, or Vault.
-  # This chart only creates the Secret resource skeleton.
   data: {}
+
+env: []
+
+extraPorts: []
 
 hpa:
   enabled: false
-  minReplicas: 2
+  minReplicas: 1
   maxReplicas: 6
-  targetCPU: 75
+  targetCPU: 80
+  targetMemory: ""
 
-resources:
-  requests:
-    cpu: 100m
-    memory: 128Mi
-  limits:
-    cpu: 500m
-    memory: 512Mi
+resources: {}
 
+deploymentStrategy:
+  type: "RollingUpdate"
+  rollingUpdate:
+    maxSurge: "25%"
+    maxUnavailable: "25%"
+
+# Direct probe objects (takes precedence over probes.* if set)
+livenessProbe: {}
+readinessProbe: {}
+
+# Structured probe config (used as fallback when livenessProbe/readinessProbe are empty)
 probes:
   liveness:
     enabled: true
-    path: /healthz
+    path: /actuator/health/liveness
     port: http
     initialDelaySeconds: 15
     periodSeconds: 10
   readiness:
     enabled: true
-    path: /ready
+    path: /actuator/health/readiness
     port: http
-    initialDelaySeconds: 5
-    periodSeconds: 5
+    initialDelaySeconds: 15
+    periodSeconds: 15
+
+serviceMonitor:
+  enabled: false
+  path: /actuator/prometheus
+  interval: 10s
+
+lifecycle: {}
+
+initContainers: []
+volumes: []
+volumeMounts: []
 
 nodeSelector: {}
 tolerations: []

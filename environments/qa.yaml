@@ -1,5 +1,5 @@
 # =============================================================================
-# Dev Environment — Cluster-Wide Defaults
+# QA Environment — Cluster-Wide Defaults
 # =============================================================================
 replicaCount: 1
 

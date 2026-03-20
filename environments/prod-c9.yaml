@@ -1,7 +1,4 @@
 # =============================================================================
-# Dev Environment — Cluster-Wide Defaults
+# Production Cluster C9 (10.4.12.100) — Cluster-Wide Defaults
 # =============================================================================
-replicaCount: 1
-
-hpa:
-  enabled: false
+replicaCount: 2

@@ -1,3 +1,0 @@
-# Inventory Service — shared config (all environments)
-image:
-  repository: registry.example.com/inventory-service

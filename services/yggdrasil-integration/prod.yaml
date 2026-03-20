@@ -1,0 +1,46 @@
+# =============================================================================
+# Yggdrasil Integration — Production Overrides
+# =============================================================================
+image:
+  tag: snapshot-87
+  pullPolicy: Always
+
+replicaCount: 2
+
+env:
+  - name: SPRING_PROFILES_ACTIVE
+    value: prod
+  - name: CONFIG_SERVER
+    value: http://config-server-service:8888
+  - name: JAVA_TOOL_OPTIONS
+    value: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -Xdebug -agentlib:jdwp=transport=dt_socket,address=0.0.0.0:5005,server=y,suspend=n"
+
+ingress:
+  hosts:
+    - host: prod-yggdrasil-integrations.crocobet.local
+      paths:
+        - path: /
+          pathType: Prefix
+    - host: internal-prod-yggdrasil-integrations.crocobet.com
+      paths:
+        - path: /
+          pathType: Prefix
+    - host: external-prod-yggdrasil-integrations.crocobet.com
+      paths:
+        - path: /
+          pathType: Prefix
+
+resources:
+  limits:
+    cpu: "2"
+    memory: 2Gi
+  requests:
+    cpu: "2"
+    memory: 2Gi
+
+hpa:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 3
+  targetCPU: 70
+  targetMemory: 70

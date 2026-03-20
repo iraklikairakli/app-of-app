@@ -3,7 +3,7 @@
 # =============================================================================
 argocd:
   namespace: argocd
-  project: default
+  project: integrations
   repoURL: "https://github.com/iraklikairakli/app-of-app.git"
 
 # =============================================================================
@@ -20,8 +20,8 @@ argocd:
 environments:
   dev:
     enabled: true
-    server: "https://kubernetes.default.svc"
-    namespace: dev
+    server: "https://10.4.12.100:6443"
+    namespace: default
     labels:
       environment: dev
     syncPolicy:
@@ -31,10 +31,23 @@ environments:
       syncOptions:
         - CreateNamespace=true
 
+  qa:
+    enabled: true
+    server: "https://10.4.12.100:6443"
+    namespace: default
+    labels:
+      environment: qa
+    syncPolicy:
+      automated:
+        prune: true
+        selfHeal: true
+      syncOptions:
+        - CreateNamespace=true
+
   stage:
     enabled: true
-    server: "https://stage.k8s.example.com"
-    namespace: stage
+    server: "https://10.4.12.100:6443"
+    namespace: default
     labels:
       environment: stage
     syncPolicy:
@@ -44,34 +57,32 @@ environments:
       syncOptions:
         - CreateNamespace=true
 
-  prod-cluster-1:
+  prod-c9:
     enabled: true
-    server: "https://prod-1.k8s.example.com"
-    namespace: production
-    envKey: prod            # maps to services/<svc>/prod.yaml
+    server: "https://10.4.12.100:6443"
+    namespace: default
+    envKey: prod
     labels:
       environment: prod
-      cluster: prod-1
-      region: us-east-1
+      cluster: c9
     syncPolicy:
       automated:
-        prune: true
-        selfHeal: true
+        prune: false
+        selfHeal: false
       syncOptions:
         - CreateNamespace=true
 
-  prod-cluster-2:
+  prod-co:
     enabled: true
-    server: "https://prod-2.k8s.example.com"
-    namespace: production
-    envKey: prod            # shares prod.yaml overrides with cluster-1
+    server: "https://10.4.12.200:6443"
+    namespace: default
+    envKey: prod
     labels:
       environment: prod
-      cluster: prod-2
-      region: eu-west-1
+      cluster: co
     syncPolicy:
       automated:
-        prune: true
-        selfHeal: true
+        prune: false
+        selfHeal: false
       syncOptions:
         - CreateNamespace=true

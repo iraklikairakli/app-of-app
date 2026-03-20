@@ -4,37 +4,56 @@
 # To onboard a new service:
 #   1. mkdir services/<your-service-name>
 #   2. cp services/_template.yaml services/<your-service-name>/base.yaml
-#   3. Edit base.yaml with your service config
-#   4. (Optional) Create dev.yaml, stage.yaml, prod.yaml for env overrides
+#   3. Edit base.yaml — set image, ports, ingress
+#   4. Create dev.yaml, qa.yaml, stage.yaml, prod.yaml for env-specific overrides
 #   5. Commit and push — ArgoCD auto-discovers the new service
 # =============================================================================
 
 image:
-  repository: registry.example.com/<your-service-name>
+  repository: crocohub/<your-service-name>
   tag: "latest"
 
-# --- Common overrides (uncomment what you need) ---
+service:
+  name: <your-service-name>-service
+  port: 8080
+  targetPort: 8080
 
-# service:
-#   port: 8080
-#   targetPort: 8080
+# --- Uncomment what you need ---
 
-# httpRoute:
+# env:
+#   - name: SPRING_PROFILES_ACTIVE
+#     value: dev
+#   - name: CONFIG_SERVER
+#     value: http://config-server-service:8888
+#   - name: JAVA_TOOL_OPTIONS
+#     value: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
+
+# ingress:
 #   enabled: true
-#   hostnames:
-#     - "myapp.example.com"
-#   rules:
-#     - backendPort: 8080
+#   annotations:
+#     kubernetes.io/ingress.class: nginx
+#     ingress.kubernetes.io/rewrite-target: /
+#   hosts:
+#     - host: internal-dev-<your-service-name>.crocobet.com
+#       paths:
+#         - path: /
+#           pathType: Prefix
 
-# configMap:
-#   enabled: true
-#   data:
-#     MY_VAR: "value"
-
-# Secrets — enable the resource, but manage values via External Secrets Operator
-# secret:
+# serviceMonitor:
 #   enabled: true
 
 # hpa:
 #   enabled: true
-#   maxReplicas: 10
+#   maxReplicas: 6
+#   targetCPU: 70
+#   targetMemory: 70
+
+# volumes:
+#   - name: my-certs-for-services
+#     secret:
+#       secretName: my-certs-for-services
+
+# volumeMounts:
+#   - name: my-certs-for-services
+#     mountPath: /usr/local/share/ca-certificates
+#     readOnly: true

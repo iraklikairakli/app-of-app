@@ -35,7 +35,7 @@ spec:
             exclude: true
   template:
     metadata:
-      name: "{{`{{ .path.basename }}`}}-{{ $envName }}"
+      name: "{{ $envName }}-{{`{{ .path.basename }}`}}"
       labels:
         app.kubernetes.io/part-of: app-of-apps
         {{- range $k, $v := $env.labels }}

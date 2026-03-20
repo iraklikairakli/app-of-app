@@ -1,10 +1,11 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: apps-stage
+  name: apps-prod-co
   namespace: argocd
   labels:
-    environment: stage
+    environment: prod
+    cluster: co
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
@@ -19,14 +20,15 @@ spec:
             exclude: true
   template:
     metadata:
-      name: "stage-{{ .path.basename }}"
+      name: "prod-co-{{ .path.basename }}"
       labels:
         app.kubernetes.io/part-of: app-of-apps
-        environment: stage
+        environment: prod
+        cluster: co
     spec:
       project: integrations
       destination:
-        server: "https://10.4.12.100:6443"
+        server: "https://10.4.12.200:6443"
         namespace: default
       source:
         repoURL: "https://github.com/iraklikairakli/app-of-app.git"
@@ -34,13 +36,13 @@ spec:
         path: chart
         helm:
           valueFiles:
-            - "../environments/stage.yaml"
+            - "../environments/prod-co.yaml"
             - "../{{ .path.path }}/base.yaml"
-            - "../{{ .path.path }}/stage.yaml"
+            - "../{{ .path.path }}/prod.yaml"
       syncPolicy:
         automated:
-          prune: true
-          selfHeal: true
+          prune: false
+          selfHeal: false
         syncOptions:
           - CreateNamespace=true
       ignoreDifferences:

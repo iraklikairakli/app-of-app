@@ -1,11 +1,11 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: apps-prod-cluster-2
+  name: apps-prod-c9
   namespace: argocd
   labels:
     environment: prod
-    cluster: prod-2
+    cluster: c9
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
@@ -20,29 +20,29 @@ spec:
             exclude: true
   template:
     metadata:
-      name: "{{ .path.basename }}-prod-2"
+      name: "prod-c9-{{ .path.basename }}"
       labels:
         app.kubernetes.io/part-of: app-of-apps
         environment: prod
-        cluster: prod-2
+        cluster: c9
     spec:
-      project: default
+      project: integrations
       destination:
-        server: "https://prod-2.k8s.example.com"
-        namespace: production
+        server: "https://10.4.12.100:6443"
+        namespace: default
       source:
         repoURL: "https://github.com/iraklikairakli/app-of-app.git"
         targetRevision: HEAD
         path: chart
         helm:
           valueFiles:
-            - "../environments/prod-cluster-2.yaml"
+            - "../environments/prod-c9.yaml"
             - "../{{ .path.path }}/base.yaml"
             - "../{{ .path.path }}/prod.yaml"
       syncPolicy:
         automated:
-          prune: true
-          selfHeal: true
+          prune: false
+          selfHeal: false
         syncOptions:
           - CreateNamespace=true
       ignoreDifferences:

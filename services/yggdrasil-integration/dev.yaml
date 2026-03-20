@@ -1,0 +1,31 @@
+# =============================================================================
+# Yggdrasil Integration — Dev Overrides
+# =============================================================================
+image:
+  tag: v3.114
+
+replicaCount: 1
+
+env:
+  - name: SPRING_PROFILES_ACTIVE
+    value: dev
+  - name: CONFIG_SERVER
+    value: http://config-server-service:8888
+  - name: JAVA_TOOL_OPTIONS
+    value: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
+  - name: JAVA_TOOL_OPTIONS
+    value: "-Xdebug -agentlib:jdwp=transport=dt_socket,address=0.0.0.0:5005,server=y,suspend=n"
+
+ingress:
+  hosts:
+    - host: internal-dev-yggdrasil-integration.crocobet.com
+      paths:
+        - path: /
+          pathType: Prefix
+    - host: external-stage-yggdrasil-integrations.crocobet.com
+      paths:
+        - path: /
+          pathType: Prefix
+
+hpa:
+  enabled: false

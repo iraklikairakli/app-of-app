@@ -26,7 +26,7 @@ spec:
     spec:
       project: integrations
       destination:
-        server: "https://10.4.12.100:6443"
+        server: "https://kubernetes.default.svc"
         namespace: default
       source:
         repoURL: "https://github.com/iraklikairakli/app-of-app.git"

@@ -1,0 +1,29 @@
+# Copy to: services/<your-service-name>/values.yaml
+# Write ONLY what differs from defaults.yaml
+
+image:
+  repository: registry.example.com/<your-service-name>
+  tag: "latest"
+
+# --- Uncomment if needed ---
+# replicaCount: 3
+# service:
+#   port: 3000
+#   targetPort: 3000
+# httpRoute:
+#   enabled: true
+#   hostnames:
+#     - "myapp.example.com"
+#   rules:
+#     - backendPort: 3000
+# hpa:
+#   enabled: true
+#   maxReplicas: 10
+# configMap:
+#   enabled: true
+#   data:
+#     MY_VAR: "value"
+# secret:
+#   enabled: true
+#   data:
+#     MY_SECRET: "changeme"

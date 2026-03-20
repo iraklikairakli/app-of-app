@@ -1,0 +1,26 @@
+image:
+  repository: registry.example.com/api-gateway
+
+httpRoute:
+  enabled: true
+  hostnames:
+    - "api.example.com"
+  rules:
+    - backendPort: 8080
+      pathMatch: /api
+
+hpa:
+  enabled: true
+  maxReplicas: 8
+
+configMap:
+  enabled: true
+  data:
+    LOG_LEVEL: "info"
+    DB_HOST: "postgres.database:5432"
+
+secret:
+  enabled: true
+  data:
+    DB_PASSWORD: "changeme"
+    JWT_SECRET: "changeme"

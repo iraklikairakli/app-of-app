@@ -1,0 +1,26 @@
+image:
+  repository: registry.example.com/frontend
+  tag: "v1.2.0"
+
+replicaCount: 3
+
+service:
+  port: 80
+  targetPort: 3000
+
+httpRoute:
+  enabled: true
+  hostnames:
+    - "frontend.example.com"
+  rules:
+    - backendPort: 80
+
+hpa:
+  enabled: true
+  maxReplicas: 10
+
+configMap:
+  enabled: true
+  data:
+    API_URL: "http://api-gateway:8080"
+    NODE_ENV: "production"

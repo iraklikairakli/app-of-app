@@ -1,0 +1,19 @@
+image:
+  repository: registry.example.com/payment-service
+
+hpa:
+  enabled: true
+  targetCPU: 60
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi
+
+secret:
+  enabled: true
+  data:
+    STRIPE_SECRET_KEY: "changeme"

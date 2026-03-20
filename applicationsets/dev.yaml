@@ -26,8 +26,8 @@ spec:
     spec:
       project: default
       destination:
-        server: "https://dev.k8s.example.com"
-        namespace: dev
+        server: "https://kubernetes.default.svc"
+        namespace: default
       source:
         repoURL: "https://github.com/iraklikairakli/app-of-app.git"
         targetRevision: HEAD

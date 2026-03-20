@@ -5,7 +5,7 @@ argocd:
   namespace: argocd
   project: default
   # Helm chart repo where service charts live
-  repoURL: "https://your-helm-repo.example.com"
+  repoURL: "https://github.com/iraklikairakli/app-of-app.git"
   # OR git repo:
   # repoURL: "https://github.com/your-org/helm-charts.git"
 
